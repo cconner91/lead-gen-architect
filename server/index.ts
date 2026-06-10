@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { existsSync } from 'fs'
+import { randomUUID } from 'crypto'
 
 dotenv.config()
 
@@ -361,7 +362,7 @@ app.post('/api/generate', (req: Request, res: Response) => {
   if (!industry || !offer || !trafficSource || !crm || !leadBuyerType) {
     return res.status(400).json({ error: 'Missing required fields' })
   }
-  const jobId = crypto.randomUUID()
+  const jobId = randomUUID()
   jobs.set(jobId, { status: 'pending' })
   res.json({ jobId })
   // Fire and forget — runs in background while client polls
