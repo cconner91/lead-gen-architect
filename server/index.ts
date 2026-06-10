@@ -92,8 +92,8 @@ const SYSTEM_PROMPT = `You are a world-class lead generation architect with 15+ 
 
 When generating a blueprint, be specific and deployment-ready. Reference actual CRM field names, include real TCPA language with named companies as placeholders, suggest specific form field names matching CRM standards, and give concrete routing logic. This will be handed directly to a lead generation team — not generic advice.`
 
-// ─── JSON Schema for structured output ──────────────────────────────────────
-const BLUEPRINT_SCHEMA = {
+// ─── JSON Schema (kept for reference, not sent to API) ───────────────────────
+const _BLUEPRINT_SCHEMA_REF = {
   type: 'object',
   additionalProperties: false,
   required: [
@@ -337,18 +337,63 @@ Lead Buyer Type: ${leadBuyerType}
 ${targetState ? `Target State(s): ${targetState}` : 'Geographic Target: National (all states)'}
 ${additionalGoals ? `Additional Goals/Context: ${additionalGoals}` : ''}
 
-Be specific and actionable — reference real CRM field names, include actual TCPA language with "[Company Name]" as a placeholder, suggest concrete field names matching CRM standards, and give explicit routing logic. This is handed directly to a lead generation team to build from.`
+Be specific and actionable — reference real CRM field names, include actual TCPA language with "[Company Name]" as a placeholder, suggest concrete field names matching CRM standards, and give explicit routing logic. This is handed directly to a lead generation team to build from.
+
+Respond with ONLY a valid JSON object matching this exact structure (no markdown, no explanation):
+{
+  "campaignSummary": "string",
+  "landingPage": {
+    "hero": { "headline": "string", "subheadline": "string", "cta": "string", "urgencyElement": "string" },
+    "trustIndicators": ["string"],
+    "sections": [{ "sectionType": "string", "headline": "string", "description": "string" }],
+    "designNotes": "string",
+    "mobileStrategy": "string"
+  },
+  "formFlow": {
+    "totalSteps": 0,
+    "strategy": "string",
+    "steps": [{ "stepNumber": 0, "headline": "string", "progressLabel": "string", "fields": [{ "name": "string", "fieldType": "string", "label": "string", "required": true, "purpose": "string", "validations": ["string"] }] }],
+    "qualifyingLogic": "string",
+    "tcpaDisclosure": "string"
+  },
+  "attribution": {
+    "parameters": [{ "name": "string", "description": "string", "example": "string" }],
+    "pixelStrategy": "string",
+    "offlineConversionStrategy": "string",
+    "analyticsSetup": "string"
+  },
+  "routing": {
+    "distributionType": "string",
+    "strategy": "string",
+    "rules": [{ "condition": "string", "destination": "string", "priority": 1, "rationale": "string" }],
+    "qualificationCriteria": ["string"],
+    "pingPostConfig": "string"
+  },
+  "crmMapping": {
+    "integrationApproach": "string",
+    "fields": [{ "formField": "string", "crmField": "string", "dataType": "string", "required": true, "transformation": "string" }],
+    "automations": ["string"],
+    "leadScoringCriteria": ["string"]
+  },
+  "compliance": {
+    "tcpaLanguage": "string",
+    "requiredDisclosures": ["string"],
+    "stateSpecificRequirements": ["string"],
+    "dataHandling": "string",
+    "optOutMechanism": "string",
+    "riskFlags": ["string"]
+  },
+  "keyInsights": ["string"],
+  "estimatedMetrics": { "estimatedCVR": "string", "estimatedCPL": "string", "leadQualityTier": "string", "expectedVolume": "string" }
+}`
 
   try {
-    // Use streaming to avoid request timeout on long-running Claude generations
     const stream = anthropic.messages.stream({
       model: 'claude-opus-4-8',
       max_tokens: 10000,
       thinking: { type: 'adaptive' },
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      output_config: { format: { type: 'json_schema', schema: BLUEPRINT_SCHEMA } } as any,
     })
 
     const response = await stream.finalMessage()
