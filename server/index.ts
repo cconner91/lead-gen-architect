@@ -403,7 +403,7 @@ Respond with ONLY a valid JSON object matching this exact structure (no markdown
   try {
     const stream = anthropic.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 6000,
+      max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
     })
