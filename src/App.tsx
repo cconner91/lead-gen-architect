@@ -23,17 +23,43 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(inputs),
-        signal: AbortSignal.timeout(55_000),
       })
 
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || `Server error ${res.status}`)
       }
 
-      const data: Blueprint = await res.json()
-      setBlueprint(data)
-      setStatus('success')
+      // Read SSE stream
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const chunks = buffer.split('\n\n')
+        buffer = chunks.pop() ?? ''
+
+        for (const chunk of chunks) {
+          const eventMatch = chunk.match(/^event: (\w+)\ndata: (.+)$/s)
+          if (!eventMatch) continue
+          const [, event, rawData] = eventMatch
+
+          if (event === 'done') {
+            setBlueprint(JSON.parse(rawData) as Blueprint)
+            setStatus('success')
+            return
+          }
+          if (event === 'error') {
+            const { error } = JSON.parse(rawData)
+            throw new Error(error)
+          }
+          // heartbeat — ignore
+        }
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error occurred'
       setErrorMsg(msg)
@@ -60,14 +86,14 @@ export default function App() {
               <h1 className="text-base font-semibold text-white leading-none">
                 AI Lead Funnel Architect
               </h1>
-              <p className="text-xs text-slate-400 mt-0.5">Powered by Claude Opus 4.8</p>
+              <p className="text-xs text-slate-400 mt-0.5">Powered by Claude Sonnet 4.6</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Structured Output · Adaptive Thinking
+              Structured Output · SSE Streaming
             </span>
             {status === 'success' && (
               <button

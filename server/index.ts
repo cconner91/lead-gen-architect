@@ -387,6 +387,19 @@ Respond with ONLY a valid JSON object matching this exact structure (no markdown
   "estimatedMetrics": { "estimatedCVR": "string", "estimatedCPL": "string", "leadQualityTier": "string", "expectedVolume": "string" }
 }`
 
+  // SSE headers — keeps Railway's proxy from cutting the connection during generation
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders()
+
+  const send = (event: string, data: unknown) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+  }
+
+  // Heartbeat every 8s so Railway knows the connection is alive
+  const heartbeat = setInterval(() => send('heartbeat', {}), 8000)
+
   try {
     const stream = anthropic.messages.stream({
       model: 'claude-sonnet-4-6',
@@ -399,17 +412,21 @@ Respond with ONLY a valid JSON object matching this exact structure (no markdown
     const textBlock = response.content.find((b) => b.type === 'text')
 
     if (!textBlock || textBlock.type !== 'text') {
-      return res.status(500).json({ error: 'No structured response generated from AI' })
+      clearInterval(heartbeat)
+      send('error', { error: 'No structured response generated from AI' })
+      return res.end()
     }
 
     const blueprint = JSON.parse(textBlock.text)
-    res.json(blueprint)
+    clearInterval(heartbeat)
+    send('done', blueprint)
+    res.end()
   } catch (err) {
     console.error('Blueprint generation error:', err)
-    if (err instanceof Anthropic.APIError) {
-      return res.status(err.status || 500).json({ error: err.message, type: 'api_error' })
-    }
-    res.status(500).json({ error: 'Failed to generate blueprint. Check server logs.' })
+    clearInterval(heartbeat)
+    const message = err instanceof Anthropic.APIError ? err.message : 'Failed to generate blueprint.'
+    send('error', { error: message })
+    res.end()
   }
 })
 
