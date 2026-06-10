@@ -425,7 +425,7 @@ Respond with ONLY a valid JSON object matching this exact structure (no markdown
   } catch (err) {
     console.error('Blueprint generation error:', err)
     clearInterval(heartbeat)
-    const message = err instanceof Anthropic.APIError ? err.message : 'Failed to generate blueprint.'
+    const message = err instanceof Error ? err.message : 'Failed to generate blueprint.'
     send('error', { error: message })
     res.end()
   }
