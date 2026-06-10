@@ -8,6 +8,7 @@ import AttributionTab from './tabs/AttributionTab'
 import RoutingTab from './tabs/RoutingTab'
 import CRMTab from './tabs/CRMTab'
 import ComplianceTab from './tabs/ComplianceTab'
+import LinkTrackingTab from './tabs/LinkTrackingTab'
 import PreviewLandingPage from './PreviewLandingPage'
 
 interface Props {
@@ -23,6 +24,7 @@ const TABS = [
   { id: 'routing', label: 'Routing', color: 'text-emerald-400 border-emerald-400', dot: 'bg-emerald-400' },
   { id: 'crm', label: 'CRM Mapping', color: 'text-amber-400 border-amber-400', dot: 'bg-amber-400' },
   { id: 'compliance', label: 'Compliance', color: 'text-rose-400 border-rose-400', dot: 'bg-rose-400' },
+  { id: 'linktracking', label: 'Link Tracking', color: 'text-teal-400 border-teal-400', dot: 'bg-teal-400' },
   { id: 'preview', label: 'Page Preview', color: 'text-purple-400 border-purple-400', dot: 'bg-purple-400' },
 ] as const
 
@@ -128,6 +130,9 @@ export default function CampaignBlueprint({ blueprint, inputs }: Props) {
         {activeTab === 'routing' && <RoutingTab routing={blueprint.routing} />}
         {activeTab === 'crm' && <CRMTab crmMapping={blueprint.crmMapping} />}
         {activeTab === 'compliance' && <ComplianceTab compliance={blueprint.compliance} />}
+        {activeTab === 'linktracking' && blueprint.linkTracking && (
+          <LinkTrackingTab linkTracking={blueprint.linkTracking} />
+        )}
         {activeTab === 'preview' && (
           <PreviewLandingPage
             landingPage={blueprint.landingPage}

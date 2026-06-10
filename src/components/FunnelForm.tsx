@@ -33,6 +33,20 @@ const LEAD_BUYER_TYPES = [
   'Direct Advertiser (Single Buyer)',
 ]
 
+const TRACKING_PLATFORMS = [
+  'CAKE',
+  'Everflow',
+  'HitPath',
+  'Tune / HasOffers',
+  'Impact',
+  'Ringba (Call Tracking)',
+  'Invoca (Call Intelligence)',
+  'RedTrack',
+  'Voluum',
+  'Custom / Proprietary',
+  'None / Not Using',
+]
+
 interface Props {
   onGenerate: (inputs: FunnelInputs) => void
   isLoading: boolean
@@ -42,6 +56,7 @@ interface Props {
 const DEFAULT_FORM: FunnelInputs = {
   industry: '',
   offer: '',
+  trackingPlatform: '',
   trafficSource: '',
   crm: '',
   leadBuyerType: '',
@@ -105,7 +120,7 @@ export default function FunnelForm({ onGenerate, isLoading, initialValues }: Pro
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-white">Campaign Inputs</h3>
         <p className="text-sm text-slate-400 mt-1">
-          Five inputs. One click. A complete funnel blueprint tailored to your vertical.
+          Six inputs. One click. A complete funnel blueprint tailored to your vertical.
         </p>
       </div>
 
@@ -161,6 +176,14 @@ export default function FunnelForm({ onGenerate, isLoading, initialValues }: Pro
           onChange={handleChange}
           options={LEAD_BUYER_TYPES}
           required
+        />
+
+        <SelectField
+          label="Tracking Platform"
+          name="trackingPlatform"
+          value={form.trackingPlatform}
+          onChange={handleChange}
+          options={TRACKING_PLATFORMS}
         />
 
         <div className="space-y-1.5">

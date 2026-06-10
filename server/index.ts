@@ -91,6 +91,19 @@ const SYSTEM_PROMPT = `You are a world-class lead generation architect with 15+ 
 - Data retention: 7 years for financial services (RESPA/TILA), 3-5 years for most others; destruction policy required
 - Lead return/dispute: maintain audit trail of consent — TrustedForm or Jornaya LeadiD for third-party verification
 
+### LINK TRACKING PLATFORMS
+- CAKE: tracking link format https://[network].cakelink.com/c?offer_id={offer_id}&aff_id={aff_id}&sub1={sub1}&sub2={sub2}; sub1–sub5 carry publisher/placement data; global postback fires on conversion with transaction_id
+- Everflow: offer tracking links with source_id, sub1–sub5; global postback at https://[network].postback.everflowclient.io/?nid=&verification_token=&offer_id={offer_id}&transaction_id={transaction_id}
+- HitPath: affiliate tracking with click_id, pub_id, offer_id; server-side postback fires to publisher on lead acceptance
+- Tune / HasOffers: affiliate_id, offer_id, transaction_id; postback format https://[network].go2cloud.org/aff_lsr?transaction_id={transaction_id}
+- Impact: ClickID (IRClickId), action_tracker_key; conversion API or pixel postback
+- Ringba: call tracking platform with RingbaKey, target_id, buyer_id; postback fires on call event (answered, duration threshold met)
+- Invoca: AI call intelligence; Invoca tag fires on page load; postback on call outcome via Signal; key params: call_id, campaign_id; integrates with Google/Meta for offline call attribution
+- RedTrack: click_id, track_id; postback URL triggers on CPA/CPL conversion confirmation
+- Voluum: click_id (cid), offer_id, aff_id; S2S postback for conversion events
+- S2S postback best practice: always pass click_id through funnel via hidden form field; fire postback server-side on lead acceptance (more reliable than pixel, TCPA-friendly since no client-side cookies); include offer_id + payout in postback for automatic reporting
+- API posting: some platforms accept direct lead submission via API (vs redirect tracking link); payload includes offer_id, affiliate_id, full lead data, and click_id; enables real-time accept/reject response
+
 When generating a blueprint, be specific and deployment-ready. Reference actual CRM field names, include real TCPA language with named companies as placeholders, suggest specific form field names matching CRM standards, and give concrete routing logic. This will be handed directly to a lead generation team — not generic advice.`
 
 // ─── JSON Schema (kept for reference, not sent to API) ───────────────────────
@@ -318,7 +331,7 @@ interface Job { status: JobStatus; data?: unknown; error?: string }
 const jobs = new Map<string, Job>()
 
 function buildPrompt(body: Record<string, string>) {
-  const { industry, offer, trafficSource, crm, leadBuyerType, targetState, additionalGoals } = body
+  const { industry, offer, trafficSource, crm, leadBuyerType, trackingPlatform, targetState, additionalGoals } = body
   return `Generate a complete, deployment-ready lead funnel blueprint for:
 
 Industry/Vertical: ${industry}
@@ -326,13 +339,14 @@ Offer/Service: ${offer}
 Primary Traffic Source: ${trafficSource}
 CRM Platform: ${crm}
 Lead Buyer Type: ${leadBuyerType}
+${trackingPlatform ? `Tracking Platform: ${trackingPlatform}` : 'Tracking Platform: Not specified — recommend a suitable option'}
 ${targetState ? `Target State(s): ${targetState}` : 'Geographic Target: National (all states)'}
 ${additionalGoals ? `Additional Goals/Context: ${additionalGoals}` : ''}
 
-Be specific and actionable — reference real CRM field names, include actual TCPA language with "[Company Name]" as a placeholder, suggest concrete field names matching CRM standards, and give explicit routing logic.
+Be specific and actionable — reference real CRM field names, include actual TCPA language with "[Company Name]" as a placeholder, suggest concrete field names matching CRM standards, and give explicit routing logic. For the linkTracking section, provide a real tracking link structure, click parameters (sub IDs, offer ID, affiliate ID, etc.), a server-side postback URL format, and API posting instructions specific to the platform.
 
 Respond with ONLY a valid JSON object (no markdown, no explanation) with this structure:
-{"campaignSummary":"string","landingPage":{"hero":{"headline":"string","subheadline":"string","cta":"string","urgencyElement":"string"},"trustIndicators":["string"],"sections":[{"sectionType":"string","headline":"string","description":"string"}],"designNotes":"string","mobileStrategy":"string"},"formFlow":{"totalSteps":0,"strategy":"string","steps":[{"stepNumber":0,"headline":"string","progressLabel":"string","fields":[{"name":"string","fieldType":"string","label":"string","required":true,"purpose":"string","validations":["string"]}]}],"qualifyingLogic":"string","tcpaDisclosure":"string"},"attribution":{"parameters":[{"name":"string","description":"string","example":"string"}],"pixelStrategy":"string","offlineConversionStrategy":"string","analyticsSetup":"string"},"routing":{"distributionType":"string","strategy":"string","rules":[{"condition":"string","destination":"string","priority":1,"rationale":"string"}],"qualificationCriteria":["string"],"pingPostConfig":"string"},"crmMapping":{"integrationApproach":"string","fields":[{"formField":"string","crmField":"string","dataType":"string","required":true,"transformation":"string"}],"automations":["string"],"leadScoringCriteria":["string"]},"compliance":{"tcpaLanguage":"string","requiredDisclosures":["string"],"stateSpecificRequirements":["string"],"dataHandling":"string","optOutMechanism":"string","riskFlags":["string"]},"keyInsights":["string"],"estimatedMetrics":{"estimatedCVR":"string","estimatedCPL":"string","leadQualityTier":"string","expectedVolume":"string"}}`
+{"campaignSummary":"string","landingPage":{"hero":{"headline":"string","subheadline":"string","cta":"string","urgencyElement":"string"},"trustIndicators":["string"],"sections":[{"sectionType":"string","headline":"string","description":"string"}],"designNotes":"string","mobileStrategy":"string"},"formFlow":{"totalSteps":0,"strategy":"string","steps":[{"stepNumber":0,"headline":"string","progressLabel":"string","fields":[{"name":"string","fieldType":"string","label":"string","required":true,"purpose":"string","validations":["string"]}]}],"qualifyingLogic":"string","tcpaDisclosure":"string"},"attribution":{"parameters":[{"name":"string","description":"string","example":"string"}],"pixelStrategy":"string","offlineConversionStrategy":"string","analyticsSetup":"string"},"routing":{"distributionType":"string","strategy":"string","rules":[{"condition":"string","destination":"string","priority":1,"rationale":"string"}],"qualificationCriteria":["string"],"pingPostConfig":"string"},"crmMapping":{"integrationApproach":"string","fields":[{"formField":"string","crmField":"string","dataType":"string","required":true,"transformation":"string"}],"automations":["string"],"leadScoringCriteria":["string"]},"compliance":{"tcpaLanguage":"string","requiredDisclosures":["string"],"stateSpecificRequirements":["string"],"dataHandling":"string","optOutMechanism":"string","riskFlags":["string"]},"linkTracking":{"platform":"string","trackingLinkStructure":"string","clickParameters":[{"name":"string","description":"string","example":"string"}],"postbackUrl":"string","apiPosting":"string","conversionEvents":["string"],"integrationNotes":"string"},"keyInsights":["string"],"estimatedMetrics":{"estimatedCVR":"string","estimatedCPL":"string","leadQualityTier":"string","expectedVolume":"string"}}`
 }
 
 async function runJob(jobId: string, prompt: string) {

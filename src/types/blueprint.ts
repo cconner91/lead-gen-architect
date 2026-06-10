@@ -4,6 +4,7 @@ export interface FunnelInputs {
   trafficSource: string
   crm: string
   leadBuyerType: string
+  trackingPlatform: string
   targetState: string
   additionalGoals: string
 }
@@ -112,6 +113,22 @@ export interface EstimatedMetrics {
   expectedVolume: string
 }
 
+export interface TrackingParameter {
+  name: string
+  description: string
+  example: string
+}
+
+export interface LinkTracking {
+  platform: string
+  trackingLinkStructure: string
+  clickParameters: TrackingParameter[]
+  postbackUrl: string
+  apiPosting: string
+  conversionEvents: string[]
+  integrationNotes: string
+}
+
 export interface CampaignBlueprint {
   campaignSummary: string
   landingPage: LandingPage
@@ -120,6 +137,7 @@ export interface CampaignBlueprint {
   routing: Routing
   crmMapping: CRMMapping
   compliance: Compliance
+  linkTracking: LinkTracking
   keyInsights: string[]
   estimatedMetrics: EstimatedMetrics
 }

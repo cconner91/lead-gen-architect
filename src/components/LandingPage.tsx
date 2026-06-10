@@ -1,6 +1,6 @@
 import {
   Sparkles, ArrowRight, FileText, Tag, GitBranch,
-  Database, Scale, MousePointerClick, CheckCircle2, Zap
+  Database, Scale, MousePointerClick, CheckCircle2, Zap, Link
 } from 'lucide-react'
 
 interface Props {
@@ -56,6 +56,14 @@ const BLUEPRINT_SECTIONS = [
     dot: 'bg-rose-400',
     description: 'TCPA consent language, required disclosures, state-specific requirements, and risk flags.',
   },
+  {
+    icon: Link,
+    label: 'Link Tracking',
+    color: 'text-teal-400',
+    bg: 'bg-teal-500/10 border-teal-500/20',
+    dot: 'bg-teal-400',
+    description: 'Tracking link structure, click parameters, S2S postback URL, API posting config, and conversion events for CAKE, Everflow, Invoca, and more.',
+  },
 ]
 
 const STEPS = [
@@ -77,7 +85,7 @@ const STEPS = [
 ]
 
 const STATS = [
-  { value: '6', label: 'Blueprint Sections' },
+  { value: '7', label: 'Blueprint Sections' },
   { value: '~30s', label: 'Generation Time' },
   { value: '20+', label: 'Industries Covered' },
   { value: '0', label: 'Guesswork' },
@@ -136,7 +144,7 @@ export default function LandingPage({ onStart }: Props) {
             Everything in Your Blueprint
           </h3>
           <p className="text-slate-400 max-w-xl mx-auto text-sm">
-            Six sections covering the full lifecycle of a lead generation campaign.
+            Seven sections covering the full lifecycle of a lead generation campaign.
             Specific, actionable, and ready to hand to your team.
           </p>
         </div>
