@@ -389,9 +389,8 @@ Respond with ONLY a valid JSON object matching this exact structure (no markdown
 
   try {
     const stream = anthropic.messages.stream({
-      model: 'claude-opus-4-8',
-      max_tokens: 10000,
-      thinking: { type: 'adaptive' },
+      model: 'claude-sonnet-4-6',
+      max_tokens: 6000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
     })

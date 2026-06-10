@@ -23,7 +23,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(inputs),
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(55_000),
       })
 
       if (!res.ok) {
