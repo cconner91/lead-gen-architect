@@ -19,17 +19,26 @@ export default function App() {
     setLastInputs(inputs)
 
     try {
-      // Start job — returns immediately with a jobId
-      const startRes = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inputs),
-      })
-      if (!startRes.ok) {
-        const data = await startRes.json().catch(() => ({}))
-        throw new Error(data.error || `Server error ${startRes.status}`)
+      // Start job with retries in case of cold-start drop
+      let startRes: Response | null = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          startRes = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(inputs),
+          })
+          break
+        } catch {
+          if (attempt === 2) throw new Error('Could not reach server after 3 attempts')
+          await new Promise((r) => setTimeout(r, 2000))
+        }
       }
-      const { jobId } = await startRes.json()
+      if (!startRes!.ok) {
+        const data = await startRes!.json().catch(() => ({}))
+        throw new Error(data.error || `Server error ${startRes!.status}`)
+      }
+      const { jobId } = await startRes!.json()
 
       // Poll every 3 seconds until done or error
       while (true) {
