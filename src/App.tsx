@@ -19,46 +19,34 @@ export default function App() {
     setLastInputs(inputs)
 
     try {
-      const res = await fetch('/api/generate', {
+      // Start job — returns immediately with a jobId
+      const startRes = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(inputs),
       })
-
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || `Server error ${res.status}`)
+      if (!startRes.ok) {
+        const data = await startRes.json().catch(() => ({}))
+        throw new Error(data.error || `Server error ${startRes.status}`)
       }
+      const { jobId } = await startRes.json()
 
-      // Read SSE stream
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
+      // Poll every 3 seconds until done or error
       while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+        await new Promise((r) => setTimeout(r, 3000))
+        const pollRes = await fetch(`/api/status/${jobId}`)
+        if (!pollRes.ok) throw new Error(`Poll error ${pollRes.status}`)
+        const job = await pollRes.json()
 
-        buffer += decoder.decode(value, { stream: true })
-        const chunks = buffer.split('\n\n')
-        buffer = chunks.pop() ?? ''
-
-        for (const chunk of chunks) {
-          const eventMatch = chunk.match(/^event: (\w+)\ndata: (.+)$/s)
-          if (!eventMatch) continue
-          const [, event, rawData] = eventMatch
-
-          if (event === 'done') {
-            setBlueprint(JSON.parse(rawData) as Blueprint)
-            setStatus('success')
-            return
-          }
-          if (event === 'error') {
-            const { error } = JSON.parse(rawData)
-            throw new Error(error)
-          }
-          // heartbeat — ignore
+        if (job.status === 'done') {
+          setBlueprint(job.data as Blueprint)
+          setStatus('success')
+          return
         }
+        if (job.status === 'error') {
+          throw new Error(job.error || 'Generation failed')
+        }
+        // status === 'pending' — keep polling
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error occurred'

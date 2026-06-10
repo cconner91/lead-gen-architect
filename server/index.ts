@@ -311,23 +311,14 @@ const _BLUEPRINT_SCHEMA_REF = {
   },
 }
 
-// ─── Generate blueprint endpoint ─────────────────────────────────────────────
-app.post('/api/generate', async (req: Request, res: Response) => {
-  const { industry, offer, trafficSource, crm, leadBuyerType, targetState, additionalGoals } = req.body as {
-    industry: string
-    offer: string
-    trafficSource: string
-    crm: string
-    leadBuyerType: string
-    targetState?: string
-    additionalGoals?: string
-  }
+// ─── In-memory job store ─────────────────────────────────────────────────────
+type JobStatus = 'pending' | 'done' | 'error'
+interface Job { status: JobStatus; data?: unknown; error?: string }
+const jobs = new Map<string, Job>()
 
-  if (!industry || !offer || !trafficSource || !crm || !leadBuyerType) {
-    return res.status(400).json({ error: 'Missing required fields: industry, offer, trafficSource, crm, leadBuyerType' })
-  }
-
-  const userPrompt = `Generate a complete, deployment-ready lead funnel blueprint for:
+function buildPrompt(body: Record<string, string>) {
+  const { industry, offer, trafficSource, crm, leadBuyerType, targetState, additionalGoals } = body
+  return `Generate a complete, deployment-ready lead funnel blueprint for:
 
 Industry/Vertical: ${industry}
 Offer/Service: ${offer}
@@ -337,98 +328,51 @@ Lead Buyer Type: ${leadBuyerType}
 ${targetState ? `Target State(s): ${targetState}` : 'Geographic Target: National (all states)'}
 ${additionalGoals ? `Additional Goals/Context: ${additionalGoals}` : ''}
 
-Be specific and actionable — reference real CRM field names, include actual TCPA language with "[Company Name]" as a placeholder, suggest concrete field names matching CRM standards, and give explicit routing logic. This is handed directly to a lead generation team to build from.
+Be specific and actionable — reference real CRM field names, include actual TCPA language with "[Company Name]" as a placeholder, suggest concrete field names matching CRM standards, and give explicit routing logic.
 
-Respond with ONLY a valid JSON object matching this exact structure (no markdown, no explanation):
-{
-  "campaignSummary": "string",
-  "landingPage": {
-    "hero": { "headline": "string", "subheadline": "string", "cta": "string", "urgencyElement": "string" },
-    "trustIndicators": ["string"],
-    "sections": [{ "sectionType": "string", "headline": "string", "description": "string" }],
-    "designNotes": "string",
-    "mobileStrategy": "string"
-  },
-  "formFlow": {
-    "totalSteps": 0,
-    "strategy": "string",
-    "steps": [{ "stepNumber": 0, "headline": "string", "progressLabel": "string", "fields": [{ "name": "string", "fieldType": "string", "label": "string", "required": true, "purpose": "string", "validations": ["string"] }] }],
-    "qualifyingLogic": "string",
-    "tcpaDisclosure": "string"
-  },
-  "attribution": {
-    "parameters": [{ "name": "string", "description": "string", "example": "string" }],
-    "pixelStrategy": "string",
-    "offlineConversionStrategy": "string",
-    "analyticsSetup": "string"
-  },
-  "routing": {
-    "distributionType": "string",
-    "strategy": "string",
-    "rules": [{ "condition": "string", "destination": "string", "priority": 1, "rationale": "string" }],
-    "qualificationCriteria": ["string"],
-    "pingPostConfig": "string"
-  },
-  "crmMapping": {
-    "integrationApproach": "string",
-    "fields": [{ "formField": "string", "crmField": "string", "dataType": "string", "required": true, "transformation": "string" }],
-    "automations": ["string"],
-    "leadScoringCriteria": ["string"]
-  },
-  "compliance": {
-    "tcpaLanguage": "string",
-    "requiredDisclosures": ["string"],
-    "stateSpecificRequirements": ["string"],
-    "dataHandling": "string",
-    "optOutMechanism": "string",
-    "riskFlags": ["string"]
-  },
-  "keyInsights": ["string"],
-  "estimatedMetrics": { "estimatedCVR": "string", "estimatedCPL": "string", "leadQualityTier": "string", "expectedVolume": "string" }
-}`
+Respond with ONLY a valid JSON object (no markdown, no explanation) with this structure:
+{"campaignSummary":"string","landingPage":{"hero":{"headline":"string","subheadline":"string","cta":"string","urgencyElement":"string"},"trustIndicators":["string"],"sections":[{"sectionType":"string","headline":"string","description":"string"}],"designNotes":"string","mobileStrategy":"string"},"formFlow":{"totalSteps":0,"strategy":"string","steps":[{"stepNumber":0,"headline":"string","progressLabel":"string","fields":[{"name":"string","fieldType":"string","label":"string","required":true,"purpose":"string","validations":["string"]}]}],"qualifyingLogic":"string","tcpaDisclosure":"string"},"attribution":{"parameters":[{"name":"string","description":"string","example":"string"}],"pixelStrategy":"string","offlineConversionStrategy":"string","analyticsSetup":"string"},"routing":{"distributionType":"string","strategy":"string","rules":[{"condition":"string","destination":"string","priority":1,"rationale":"string"}],"qualificationCriteria":["string"],"pingPostConfig":"string"},"crmMapping":{"integrationApproach":"string","fields":[{"formField":"string","crmField":"string","dataType":"string","required":true,"transformation":"string"}],"automations":["string"],"leadScoringCriteria":["string"]},"compliance":{"tcpaLanguage":"string","requiredDisclosures":["string"],"stateSpecificRequirements":["string"],"dataHandling":"string","optOutMechanism":"string","riskFlags":["string"]},"keyInsights":["string"],"estimatedMetrics":{"estimatedCVR":"string","estimatedCPL":"string","leadQualityTier":"string","expectedVolume":"string"}}`
+}
 
-  // SSE headers — keeps Railway's proxy from cutting the connection during generation
-  res.setHeader('Content-Type', 'text/event-stream')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('Connection', 'keep-alive')
-  res.flushHeaders()
-
-  const send = (event: string, data: unknown) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-  }
-
-  // Heartbeat every 8s so Railway knows the connection is alive
-  const heartbeat = setInterval(() => send('heartbeat', {}), 8000)
-
+async function runJob(jobId: string, prompt: string) {
   try {
     const stream = anthropic.messages.stream({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [{ role: 'user', content: prompt }],
     })
-
     const response = await stream.finalMessage()
     const textBlock = response.content.find((b) => b.type === 'text')
-
-    if (!textBlock || textBlock.type !== 'text') {
-      clearInterval(heartbeat)
-      send('error', { error: 'No structured response generated from AI' })
-      return res.end()
-    }
-
+    if (!textBlock || textBlock.type !== 'text') throw new Error('No text response from AI')
     const raw = textBlock.text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
     const blueprint = JSON.parse(raw)
-    clearInterval(heartbeat)
-    send('done', blueprint)
-    res.end()
+    jobs.set(jobId, { status: 'done', data: blueprint })
   } catch (err) {
     console.error('Blueprint generation error:', err)
-    clearInterval(heartbeat)
-    const message = err instanceof Error ? err.message : 'Failed to generate blueprint.'
-    send('error', { error: message })
-    res.end()
+    const error = err instanceof Error ? err.message : 'Generation failed'
+    jobs.set(jobId, { status: 'error', error })
   }
+}
+
+// ─── POST /api/generate — starts job, returns immediately ────────────────────
+app.post('/api/generate', (req: Request, res: Response) => {
+  const { industry, offer, trafficSource, crm, leadBuyerType } = req.body as Record<string, string>
+  if (!industry || !offer || !trafficSource || !crm || !leadBuyerType) {
+    return res.status(400).json({ error: 'Missing required fields' })
+  }
+  const jobId = crypto.randomUUID()
+  jobs.set(jobId, { status: 'pending' })
+  res.json({ jobId })
+  // Fire and forget — runs in background while client polls
+  runJob(jobId, buildPrompt(req.body))
+})
+
+// ─── GET /api/status/:id — poll for job result ───────────────────────────────
+app.get('/api/status/:id', (req: Request, res: Response) => {
+  const job = jobs.get(req.params.id)
+  if (!job) return res.status(404).json({ error: 'Job not found' })
+  res.json(job)
 })
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
