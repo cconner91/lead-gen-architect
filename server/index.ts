@@ -337,15 +337,16 @@ Respond with ONLY a valid JSON object (no markdown, no explanation) with this st
 
 async function runJob(jobId: string, prompt: string) {
   try {
-    const stream = anthropic.messages.stream({
+    const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
+      max_tokens: 16000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     })
-    const response = await stream.finalMessage()
+    console.log(`stop_reason=${response.stop_reason} output_tokens=${response.usage.output_tokens}`)
     const textBlock = response.content.find((b) => b.type === 'text')
     if (!textBlock || textBlock.type !== 'text') throw new Error('No text response from AI')
+    if (response.stop_reason === 'max_tokens') throw new Error('Response truncated — hit max_tokens limit')
     const raw = textBlock.text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
     const blueprint = JSON.parse(raw)
     jobs.set(jobId, { status: 'done', data: blueprint })
