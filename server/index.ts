@@ -417,7 +417,8 @@ Respond with ONLY a valid JSON object matching this exact structure (no markdown
       return res.end()
     }
 
-    const blueprint = JSON.parse(textBlock.text)
+    const raw = textBlock.text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+    const blueprint = JSON.parse(raw)
     clearInterval(heartbeat)
     send('done', blueprint)
     res.end()
