@@ -374,7 +374,7 @@ app.post('/api/generate', (req: Request, res: Response) => {
 app.get('/api/status/:id', (req: Request, res: Response) => {
   const job = jobs.get(req.params.id)
   if (!job) return res.status(404).json({ error: 'Job not found' })
-  res.json(job)
+  res.set('Cache-Control', 'no-store').json(job)
 })
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }))
